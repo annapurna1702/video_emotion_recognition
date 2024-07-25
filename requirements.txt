@@ -3,6 +3,7 @@ pandas
 streamlit
 streamlit_webrtc
 av
+opencv-python-headless
 deepface
 mediapipe
 tensorflow-cpu
