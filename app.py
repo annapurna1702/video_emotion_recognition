@@ -9,6 +9,8 @@ from deepface import DeepFace
 from collections import Counter
 import tempfile
 from PIL import Image
+import cv2
+
 
 # Define emotion mapping
 emotion_map = {
@@ -22,34 +24,7 @@ emotion_map = {
 
 
 
-import cv2
-import moviepy.editor as mp
-import tempfile
-import io
-from pydub import AudioSegment
 
-def extract_audio_from_video(video_bytes):
-    video_file = io.BytesIO(video_bytes)
-    temp_audio_path = tempfile.mktemp(suffix='.wav')
-    
-    try:
-        # Use moviepy to extract audio
-        video_clip = mp.VideoFileClip(video_file)
-        audio_clip = video_clip.audio
-        audio_clip.write_audiofile(temp_audio_path)
-        video_clip.close()
-        audio_clip.close()
-
-        # Load the audio file using pydub
-        audio = AudioSegment.from_file(temp_audio_path)
-        
-        with open(temp_audio_path, 'rb') as f:
-            audio_bytes = f.read()
-        
-        return audio_bytes
-    except Exception as e:
-        st.error(f"Error processing audio: {str(e)}")
-        return None
 
 def split_video_into_frames(video_bytes, frame_rate=1):
     video_file = io.BytesIO(video_bytes)
@@ -74,12 +49,11 @@ def split_video_into_frames(video_bytes, frame_rate=1):
 
             if frame_count % frame_rate == 0:
                 try:
-                    # Convert the frame to RGB and PIL Image
+                    # Convert the frame to RGB (numpy array)
                     img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    pil_img = Image.fromarray(img)
-
+                    
                     # Analyze emotions
-                    analysis = DeepFace.analyze(pil_img, actions=['emotion'])
+                    analysis = DeepFace.analyze(img, actions=['emotion'])
                     if isinstance(analysis, list):
                         for result in analysis:
                             dominant_emotion = result['dominant_emotion']
