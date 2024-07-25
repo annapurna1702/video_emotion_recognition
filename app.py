@@ -75,7 +75,7 @@ def extract_audio_from_video(video_path, audio_output_path):
     audio_clip = video_clip.audio
     audio_clip.write_audiofile(audio_output_path)
     video_clip.close()
-    audio_clip.close()
+    #audio_clip.close()
     
 
 def extract_features(file_path, max_length=100):
@@ -105,7 +105,7 @@ def main():
             f.write(uploaded_file.read())
         
         output_folder = 'output_frames'
-        audio_output_path = 'output_audio.wav'
+        audio_output_path = audio_clip
 
         st.write("Processing video...please wait")
         highest_emotion = split_video_into_frames(video_path, output_folder)
@@ -115,7 +115,7 @@ def main():
         svm_model = joblib.load(model_path)
         scaler = joblib.load('scaler.pkl')
 
-        features = extract_features(audio_output_path)
+        features = extract_features(audio_clip)
         if features is not None:
             features_2d = features.reshape(1, -1)
             features_normalized = scaler.transform(features_2d)
