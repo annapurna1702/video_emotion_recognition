@@ -12,5 +12,5 @@ tensorflow
 tf-keras
 pydub
 imageio
-
+ffmpeg-python
 
