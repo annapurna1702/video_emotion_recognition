@@ -13,4 +13,5 @@ tf-keras
 pydub
 imageio
 ffmpeg-python
+PIL
 
