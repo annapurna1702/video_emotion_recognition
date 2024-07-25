@@ -7,10 +7,8 @@ deepface
 streamlit
 tensorflow
 moviepy
-librosa
 scikit-learn
-joblib
-torch
 keras
+
 
 
