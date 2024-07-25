@@ -1,9 +1,10 @@
-numpy
-pandas
-streamlit
 opencv-python-headless
+numpy
+librosa
+joblib
+torch
 deepface
-retinaface
+streamlit
 tensorflow
 moviepy
 librosa
