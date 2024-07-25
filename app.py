@@ -1,6 +1,6 @@
 import io
 import numpy as np
-import imageio.v3 as iio
+import ffmpeg
 import librosa
 import joblib
 import torch
@@ -10,6 +10,7 @@ from sklearn.metrics import accuracy_score
 from deepface import DeepFace
 import streamlit as st
 from collections import Counter
+from PIL import Image
 
 # Define emotion mapping
 emotion_map = {
@@ -23,30 +24,40 @@ emotion_map = {
 
 # Define functions
 def split_video_into_frames(video_bytes, frame_rate=1):
-    video_file = io.BytesIO(video_bytes)
-    reader = iio.imopen(video_file, 'ffmpeg')
-    
-    emotion_counter = Counter()
+    video_stream = io.BytesIO(video_bytes)
+    temp_video_path = '/tmp/temp_video.mp4'
+
+    with open(temp_video_path, 'wb') as temp_file:
+        temp_file.write(video_bytes)
+
+    # Extract frames using ffmpeg
     frame_count = 0
+    emotion_counter = Counter()
 
-    for frame in reader:
-        if frame_count % frame_rate == 0:
-            try:
-                analysis = DeepFace.analyze(frame, actions=['emotion'])
-                if isinstance(analysis, list):
-                    for result in analysis:
-                        dominant_emotion = result['dominant_emotion']
+    try:
+        probe = ffmpeg.probe(temp_video_path)
+        duration = float(probe['format']['duration'])
+        frame_interval = int(duration * 25)  # 25 frames per second
+        for frame in ffmpeg.input(temp_video_path).output('pipe:', format='image2', vframes=1).run(capture_stdout=True, capture_stderr=True):
+            img = Image.open(io.BytesIO(frame))
+            img = np.array(img)
+
+            if frame_count % frame_rate == 0:
+                try:
+                    analysis = DeepFace.analyze(img, actions=['emotion'])
+                    if isinstance(analysis, list):
+                        for result in analysis:
+                            dominant_emotion = result['dominant_emotion']
+                            emotion_counter[dominant_emotion] += 1
+                    else:
+                        dominant_emotion = analysis['dominant_emotion']
                         emotion_counter[dominant_emotion] += 1
-                else:
-                    dominant_emotion = analysis['dominant_emotion']
-                    emotion_counter[dominant_emotion] += 1
+                except Exception as e:
+                    st.error(f"Error analyzing emotion: {str(e)}")
 
-            except Exception as e:
-                st.error(f"Error analyzing emotion: {str(e)}")
-        
-        frame_count += 1
-    
-    reader.close()
+            frame_count += 1
+    except Exception as e:
+        st.error(f"Error processing video: {str(e)}")
 
     if emotion_counter:
         highest_occurring_emotion = emotion_counter.most_common(1)[0][0]
@@ -57,12 +68,15 @@ def split_video_into_frames(video_bytes, frame_rate=1):
 
 def extract_audio_from_video(video_bytes):
     video_file = io.BytesIO(video_bytes)
-    video_clip = VideoFileClip(video_file)
-    audio_clip = video_clip.audio
-    with io.BytesIO() as audio_file:
-        audio_clip.write_audiofile(audio_file.name, codec='pcm_s16le')
-        audio_file.seek(0)
-        return audio_file.read()
+    temp_video_path = '/tmp/temp_video.mp4'
+
+    with open(temp_video_path, 'wb') as temp_file:
+        temp_file.write(video_bytes)
+
+    audio_file = io.BytesIO()
+    ffmpeg.input(temp_video_path).output('pipe:', format='wav').run(capture_stdout=True, capture_stderr=True, stdout=audio_file)
+    audio_file.seek(0)
+    return audio_file.read()
 
 def extract_features(audio_bytes, max_length=100):
     try:
