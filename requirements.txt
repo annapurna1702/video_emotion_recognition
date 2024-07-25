@@ -9,6 +9,6 @@ streamlit
 Pillow
 deepface
 tensorflow
-keras
+tf-keras
 
 
