@@ -24,8 +24,6 @@ emotion_map = {
 
 
 
-
-
 def split_video_into_frames(video_bytes, frame_rate=1):
     video_file = io.BytesIO(video_bytes)
     temp_video_path = tempfile.mktemp(suffix='.mp4')
@@ -53,16 +51,20 @@ def split_video_into_frames(video_bytes, frame_rate=1):
                     img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     
                     # Analyze emotions
-                    analysis = DeepFace.analyze(img, actions=['emotion'])
-                    if isinstance(analysis, list):
-                        for result in analysis:
-                            dominant_emotion = result['dominant_emotion']
+                    try:
+                        analysis = DeepFace.analyze(img, actions=['emotion'])
+                        if isinstance(analysis, list):
+                            for result in analysis:
+                                dominant_emotion = result['dominant_emotion']
+                                emotion_counter[dominant_emotion] += 1
+                        else:
+                            dominant_emotion = analysis['dominant_emotion']
                             emotion_counter[dominant_emotion] += 1
-                    else:
-                        dominant_emotion = analysis['dominant_emotion']
-                        emotion_counter[dominant_emotion] += 1
+                    except Exception as e:
+                        st.error(f"DeepFace analysis error: {str(e)}")
+
                 except Exception as e:
-                    st.error(f"Error analyzing emotion: {str(e)}")
+                    st.error(f"Error processing frame: {str(e)}")
 
             frame_count += 1
 
@@ -77,7 +79,9 @@ def split_video_into_frames(video_bytes, frame_rate=1):
 
     return highest_occurring_emotion
 
-    
+
+
+
 
 
 def extract_audio_from_video(video_bytes):
