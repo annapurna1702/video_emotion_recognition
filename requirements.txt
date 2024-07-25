@@ -9,6 +9,8 @@ moviepy
 scikit-learn
 Pillow==9.5.0
 deepface==0.0.79
+tensorflow==2.8.0
+keras==2.8.0
 
 
 
