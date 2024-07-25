@@ -4,8 +4,6 @@ joblib
 torch
 moviepy
 scikit-learn
-tensorflow
-keras
 opencv-python-headless==4.8.0.74
 streamlit==1.25.0
 Pillow==9.5.0
