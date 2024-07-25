@@ -1,11 +1,9 @@
-numpy<2
+numpy
 pandas
 streamlit
-streamlit_webrtc
-av
 opencv-python-headless
 deepface
-mediapipe
+retinaface
 tensorflow
 moviepy
 librosa
