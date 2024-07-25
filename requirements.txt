@@ -6,6 +6,7 @@ av
 opencv-python-headless
 deepface
 mediapipe
+tensorflow>=1.9.0
 tensorflow-cpu
 moviepy
 librosa
