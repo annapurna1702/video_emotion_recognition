@@ -1,0 +1,10 @@
+streamlit
+opencv-python
+deepface
+moviepy
+librosa
+scikit-learn
+joblib
+torch
+numpy<2
+pandas
