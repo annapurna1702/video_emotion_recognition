@@ -5,10 +5,10 @@ joblib
 torch
 deepface
 streamlit
-tensorflow
+tensorflow==2.8.0
 moviepy
 scikit-learn
-keras
+keras==2.8.0
 
 
 
