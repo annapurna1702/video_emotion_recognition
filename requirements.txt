@@ -8,8 +8,6 @@ opencv-python-headless==4.8.0.74
 streamlit==1.25.0
 Pillow==9.5.0
 deepface==0.0.79
-tensorflow==2.12
-keras==2.12
-
+tensorflow.keras.layers
 
 
