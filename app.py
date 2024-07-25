@@ -1,16 +1,13 @@
 import io
 import numpy as np
-import ffmpeg
+from PIL import Image
+from pydub import AudioSegment
 import librosa
 import joblib
-import torch
-from torch.utils.data import Dataset, DataLoader
-from sklearn.preprocessing import LabelEncoder, StandardScaler
-from sklearn.metrics import accuracy_score
-from deepface import DeepFace
 import streamlit as st
+from deepface import DeepFace
 from collections import Counter
-from PIL import Image
+import tempfile
 
 # Define emotion mapping
 emotion_map = {
@@ -22,10 +19,9 @@ emotion_map = {
     'sad': 5
 }
 
-# Define functions
 def split_video_into_frames(video_bytes, frame_rate=1):
     video_file = io.BytesIO(video_bytes)
-    temp_video_path = '/tmp/temp_video.mp4'
+    temp_video_path = tempfile.mktemp(suffix='.mp4')
 
     with open(temp_video_path, 'wb') as temp_file:
         temp_file.write(video_bytes)
@@ -35,26 +31,23 @@ def split_video_into_frames(video_bytes, frame_rate=1):
 
     try:
         # Extract frames from video
-        out, _ = (
-            ffmpeg
-            .input(temp_video_path)
-            .output('pipe:', format='rawvideo', pix_fmt='rgb24')
-            .run(capture_stdout=True, capture_stderr=True)
-        )
+        import cv2
 
-        # Read frames from the raw data
-        width, height = 640, 480  # Adjust width and height according to your video resolution
-        frame_size = width * height * 3
-        for i in range(0, len(out), frame_size):
-            frame = out[i:i + frame_size]
-            if len(frame) < frame_size:
+        cap = cv2.VideoCapture(temp_video_path)
+        if not cap.isOpened():
+            st.error("Error: Could not open video.")
+            return None
+
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        while True:
+            success, frame = cap.read()
+            if not success:
                 break
-
-            img = Image.frombytes('RGB', (width, height), frame)
-            img = np.array(img)
 
             if frame_count % frame_rate == 0:
                 try:
+                    img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     analysis = DeepFace.analyze(img, actions=['emotion'])
                     if isinstance(analysis, list):
                         for result in analysis:
@@ -68,9 +61,10 @@ def split_video_into_frames(video_bytes, frame_rate=1):
 
             frame_count += 1
 
+        cap.release()
     except Exception as e:
         st.error(f"Error processing video: {str(e)}")
-
+    
     if emotion_counter:
         highest_occurring_emotion = emotion_counter.most_common(1)[0][0]
     else:
@@ -80,12 +74,15 @@ def split_video_into_frames(video_bytes, frame_rate=1):
 
 def extract_audio_from_video(video_bytes):
     video_file = io.BytesIO(video_bytes)
-    video_clip = mp.VideoFileClip(video_file)
-    audio_clip = video_clip.audio
-    with io.BytesIO() as audio_file:
-        audio_clip.write_audiofile(audio_file.name, codec='pcm_s16le')
-        audio_file.seek(0)
-        return audio_file.read()
+    temp_audio_path = tempfile.mktemp(suffix='.wav')
+
+    with open(temp_audio_path, 'wb') as temp_file:
+        temp_file.write(video_bytes)
+
+    audio = AudioSegment.from_file(temp_audio_path)
+    audio_bytes_io = io.BytesIO()
+    audio.export(audio_bytes_io, format='wav')
+    return audio_bytes_io.getvalue()
 
 def extract_features(audio_bytes, max_length=100):
     try:
