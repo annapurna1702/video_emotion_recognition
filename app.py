@@ -1,6 +1,6 @@
 import io
 import numpy as np
-import moviepy.editor as mp
+import ffmpeg
 import librosa
 import joblib
 import torch
@@ -25,27 +25,51 @@ emotion_map = {
 # Define functions
 def split_video_into_frames(video_bytes, frame_rate=1):
     video_file = io.BytesIO(video_bytes)
-    video_clip = mp.VideoFileClip(video_file)
-    
+    temp_video_path = '/tmp/temp_video.mp4'
+
+    with open(temp_video_path, 'wb') as temp_file:
+        temp_file.write(video_bytes)
+
     emotion_counter = Counter()
     frame_count = 0
 
-    for frame in video_clip.iter_frames(fps=25, dtype='uint8'):
-        if frame_count % frame_rate == 0:
-            try:
-                img = Image.fromarray(frame)
-                analysis = DeepFace.analyze(np.array(img), actions=['emotion'])
-                if isinstance(analysis, list):
-                    for result in analysis:
-                        dominant_emotion = result['dominant_emotion']
+    try:
+        # Extract frames from video
+        out, _ = (
+            ffmpeg
+            .input(temp_video_path)
+            .output('pipe:', format='rawvideo', pix_fmt='rgb24')
+            .run(capture_stdout=True, capture_stderr=True)
+        )
+
+        # Read frames from the raw data
+        width, height = 640, 480  # Adjust width and height according to your video resolution
+        frame_size = width * height * 3
+        for i in range(0, len(out), frame_size):
+            frame = out[i:i + frame_size]
+            if len(frame) < frame_size:
+                break
+
+            img = Image.frombytes('RGB', (width, height), frame)
+            img = np.array(img)
+
+            if frame_count % frame_rate == 0:
+                try:
+                    analysis = DeepFace.analyze(img, actions=['emotion'])
+                    if isinstance(analysis, list):
+                        for result in analysis:
+                            dominant_emotion = result['dominant_emotion']
+                            emotion_counter[dominant_emotion] += 1
+                    else:
+                        dominant_emotion = analysis['dominant_emotion']
                         emotion_counter[dominant_emotion] += 1
-                else:
-                    dominant_emotion = analysis['dominant_emotion']
-                    emotion_counter[dominant_emotion] += 1
-            except Exception as e:
-                st.error(f"Error analyzing emotion: {str(e)}")
-        
-        frame_count += 1
+                except Exception as e:
+                    st.error(f"Error analyzing emotion: {str(e)}")
+
+            frame_count += 1
+
+    except Exception as e:
+        st.error(f"Error processing video: {str(e)}")
 
     if emotion_counter:
         highest_occurring_emotion = emotion_counter.most_common(1)[0][0]
