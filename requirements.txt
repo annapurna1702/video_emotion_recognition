@@ -11,5 +11,6 @@ deepface
 tensorflow
 tf-keras
 pydub
+imageio
 
 
