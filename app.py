@@ -8,6 +8,7 @@ import streamlit as st
 from deepface import DeepFace
 from collections import Counter
 import tempfile
+from PIL import Image
 
 # Define emotion mapping
 emotion_map = {
@@ -18,6 +19,8 @@ emotion_map = {
     'neutral': 4,
     'sad': 5
 }
+
+
 
 def split_video_into_frames(video_bytes, frame_rate=1):
     video_file = io.BytesIO(video_bytes)
@@ -30,16 +33,11 @@ def split_video_into_frames(video_bytes, frame_rate=1):
     frame_count = 0
 
     try:
-        # Extract frames from video
-        import cv2
-
         cap = cv2.VideoCapture(temp_video_path)
         if not cap.isOpened():
             st.error("Error: Could not open video.")
             return None
 
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         while True:
             success, frame = cap.read()
             if not success:
@@ -47,8 +45,12 @@ def split_video_into_frames(video_bytes, frame_rate=1):
 
             if frame_count % frame_rate == 0:
                 try:
+                    # Convert the frame to RGB and PIL Image
                     img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    analysis = DeepFace.analyze(img, actions=['emotion'])
+                    pil_img = Image.fromarray(img)
+
+                    # Analyze emotions
+                    analysis = DeepFace.analyze(pil_img, actions=['emotion'])
                     if isinstance(analysis, list):
                         for result in analysis:
                             dominant_emotion = result['dominant_emotion']
@@ -71,6 +73,9 @@ def split_video_into_frames(video_bytes, frame_rate=1):
         highest_occurring_emotion = None
 
     return highest_occurring_emotion
+
+    
+
 
 def extract_audio_from_video(video_bytes):
     video_file = io.BytesIO(video_bytes)
