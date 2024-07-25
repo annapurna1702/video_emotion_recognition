@@ -12,5 +12,5 @@ librosa
 scikit-learn
 joblib
 torch
-retinaface
+
 
