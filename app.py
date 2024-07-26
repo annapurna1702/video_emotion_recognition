@@ -3,14 +3,10 @@ import numpy as np
 import cv2
 import librosa
 import joblib
-import torch
-from torch.utils.data import Dataset, DataLoader
-from sklearn.preprocessing import LabelEncoder, StandardScaler
-from sklearn.metrics import accuracy_score
 from deepface import DeepFace
-from moviepy.editor import VideoFileClip
 import streamlit as st
 from collections import Counter
+from moviepy.editor import VideoFileClip
 
 # Define emotion mapping
 emotion_map = {
@@ -46,7 +42,7 @@ def split_video_into_frames_and_analyze_emotions(video_path, frame_rate=1):
                     dominant_emotion = analysis['dominant_emotion']
                     emotion_counter[dominant_emotion] += 1
             except Exception as e:
-                st.error(f"Error analyzing frame {frame_count}: {str(e)}")
+                pass
 
         success, frame = cap.read()
         frame_count += 1
@@ -62,11 +58,11 @@ def split_video_into_frames_and_analyze_emotions(video_path, frame_rate=1):
 
 def extract_audio_from_video(video_path):
     video_clip = VideoFileClip(video_path)
-    audio_clip = video_clip.audio
-    audio_array = audio_clip.to_soundarray(fps=44100)
-    video_clip.close()
-    audio_clip.close()
-    return audio_array, 44100
+    audio_path = "temp_audio.wav"
+    video_clip.audio.write_audiofile(audio_path)
+    audio_array, sr = librosa.load(audio_path, sr=None)
+    os.remove(audio_path)
+    return audio_array, sr
 
 def extract_features(audio_array, sr, max_length=100):
     try:
