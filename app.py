@@ -8,7 +8,7 @@ import streamlit as st
 from collections import Counter
 from moviepy.editor import VideoFileClip
 
-# Define emotion mapping
+
 emotion_map = {
     'angry': 0,
     'disgust': 1,
@@ -18,7 +18,7 @@ emotion_map = {
     'sad': 5
 }
 
-# Define functions
+
 def split_video_into_frames_and_analyze_emotions(video_path, frame_rate=1):
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
@@ -81,6 +81,8 @@ def extract_features(audio_array, sr, max_length=100):
         return None
 
 def main():
+    with open("style.css") as f:
+      st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
     st.title("Emotion Detection from Video")
     
     uploaded_file = st.file_uploader("Upload a video", type=["mp4"])
