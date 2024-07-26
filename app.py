@@ -23,10 +23,7 @@ emotion_map = {
 }
 
 # Define functions
-def split_video_into_frames(video_path, output_folder, frame_rate=1):
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
-
+def split_video_into_frames_and_analyze_emotions(video_path, frame_rate=1):
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         st.error("Error: Could not open video.")
@@ -39,9 +36,6 @@ def split_video_into_frames(video_path, output_folder, frame_rate=1):
 
     while success:
         if frame_count % frame_rate == 0:
-            frame_filename = os.path.join(output_folder, f"frame_{frame_count}.jpg")
-            cv2.imwrite(frame_filename, frame)
-
             try:
                 analysis = DeepFace.analyze(frame, actions=['emotion'])
                 if isinstance(analysis, list):
@@ -51,10 +45,8 @@ def split_video_into_frames(video_path, output_folder, frame_rate=1):
                 else:
                     dominant_emotion = analysis['dominant_emotion']
                     emotion_counter[dominant_emotion] += 1
-
-                
             except Exception as e:
-                st.error(f"")
+                st.error(f"Error analyzing frame {frame_count}: {str(e)}")
 
         success, frame = cap.read()
         frame_count += 1
@@ -63,27 +55,24 @@ def split_video_into_frames(video_path, output_folder, frame_rate=1):
 
     if emotion_counter:
         highest_occurring_emotion = emotion_counter.most_common(1)[0][0]
-        
     else:
         highest_occurring_emotion = None
-        
 
     return highest_occurring_emotion
 
-def extract_audio_from_video(video_path, audio_output_path):
+def extract_audio_from_video(video_path):
     video_clip = VideoFileClip(video_path)
     audio_clip = video_clip.audio
-    audio_clip.write_audiofile(audio_output_path)
+    audio_array = audio_clip.to_soundarray(fps=44100)
     video_clip.close()
     audio_clip.close()
-    
+    return audio_array, 44100
 
-def extract_features(file_path, max_length=100):
+def extract_features(audio_array, sr, max_length=100):
     try:
-        audio, sr = librosa.load(file_path, sr=None)
-        mfccs = librosa.feature.mfcc(y=audio, sr=sr, n_mfcc=13)
-        chroma = librosa.feature.chroma_stft(y=audio, sr=sr)
-        spectral_contrast = librosa.feature.spectral_contrast(y=audio, sr=sr)
+        mfccs = librosa.feature.mfcc(y=audio_array, sr=sr, n_mfcc=13)
+        chroma = librosa.feature.chroma_stft(y=audio_array, sr=sr)
+        spectral_contrast = librosa.feature.spectral_contrast(y=audio_array, sr=sr)
 
         features = np.vstack([mfccs, chroma, spectral_contrast])
         if features.shape[1] < max_length:
@@ -92,7 +81,7 @@ def extract_features(file_path, max_length=100):
             features = features[:, :max_length]
         return features.T
     except Exception as e:
-        st.error(f"Error extracting features from {file_path}: {str(e)}")
+        st.error(f"Error extracting features from audio: {str(e)}")
         return None
 
 def main():
@@ -104,18 +93,15 @@ def main():
         with open(video_path, "wb") as f:
             f.write(uploaded_file.read())
         
-        output_folder = 'output_frames'
-        audio_output_path = "output_audio.wav"
-
         st.write("Processing video...please wait")
-        highest_emotion = split_video_into_frames(video_path, output_folder)
-        extract_audio_from_video(video_path, audio_output_path)
+        highest_emotion = split_video_into_frames_and_analyze_emotions(video_path)
+        audio_array, sr = extract_audio_from_video(video_path)
 
         model_path = "SVMexec_modeltesting113.pkl"
         svm_model = joblib.load(model_path)
         scaler = joblib.load('scaler.pkl')
 
-        features = extract_features(audio_output_path)
+        features = extract_features(audio_array, sr)
         if features is not None:
             features_2d = features.reshape(1, -1)
             features_normalized = scaler.transform(features_2d)
@@ -124,8 +110,6 @@ def main():
             emotion_labels = ['angry', 'disgust', 'fear', 'happy', 'neutral', 'sad']
             predicted_emotion = emotion_labels[predicted_class]
             
-            
-
             if highest_emotion == predicted_emotion:
                 st.write(f"The person in the video is {predicted_emotion}.")
             else:
