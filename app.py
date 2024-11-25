@@ -6,7 +6,7 @@ import joblib
 from deepface import DeepFace
 import streamlit as st
 from collections import Counter
-from moviepy.editor import VideoFileClip
+from moviepy import VideoFileClip
 
 
 emotion_map = {
